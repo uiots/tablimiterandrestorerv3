@@ -103,7 +103,7 @@ const TabManager = {
   async init() {
     try {
       const {config = {}} = await chrome.storage.sync.get('config');
-      const {hiddenTabs = {}} = await chrome.storage.local.get('hiddenTabs');
+      const {hiddenTabs = []} = await chrome.storage.local.get('hiddenTabs');
       const {tabAccessTimes = {}} = await chrome.storage.local.get('tabAccessTimes');
       
       this.config = {...this.config, ...config};
