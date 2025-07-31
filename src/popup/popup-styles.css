@@ -1,0 +1,457 @@
+:root {
+  --color-primary: #3f50b5;
+  --color-badge-hidden: #3f50b5;
+  --color-badge-open: #2196F3;
+  --color-badge-user: #4CAF50;
+  --color-text: #333;
+  --color-text-secondary: #666;
+  --color-border: #e0e0e0;
+  --color-background: #fff;
+  --color-background-panel: #f5f5f5;
+  --border-radius: 8px;
+  --font-size-base: 14px;
+  --font-size-small: 12px;
+  --font-size-title: 16px;
+  --transition-default: 0.2s ease;
+}
+
+/* 基础样式 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 400px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  line-height: 1.5;
+  overflow: hidden; /* 防止body出现滚动条 */
+  display: flex;
+  flex-direction: column;
+  height: 600px; /* 设置固定高度 */
+}
+
+/* 滚动条样式，仅应用于内容容器 */
+.content-container::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.content-container::-webkit-scrollbar-thumb:window-inactive,
+.content-container::-webkit-scrollbar-thumb {
+  background-clip: content-box;
+  background-color: #9e9e9e;
+  background-color: var(--color-primary);
+  border: 2px solid transparent;
+  border-radius: 4px;
+  height: 56px;
+}
+.content-container::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-primary);
+}
+
+/* 头部样式 */
+.header {
+  display: flex;
+  align-items: center;
+  background-color: var(--color-primary);
+  color: white;
+  padding: 12px 16px;
+  flex-shrink: 0; /* 防止header被压缩 */
+}
+
+.header h1 {
+  font-size: var(--font-size-title);
+  font-weight: 500;
+}
+
+.header__icon {
+  width: 24px;
+  height: 24px;
+  margin-right: 12px;
+  border-radius: 4px;
+}
+
+.bmc__button {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bmc__icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* 主体内容结构 */
+.content-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto; /* 只在内容容器添加滚动条 */
+  overflow-x: hidden;
+  height: calc(100% - 52px); /* 减去header高度 */
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+}
+
+/* 设置切换按钮 */
+.config-toggle {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0; /* 防止被压缩 */
+  background-color: var(--color-background);
+}
+
+.toggle-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: var(--transition-default);
+}
+
+.toggle-button:hover {
+  background-color: var(--color-background-panel);
+}
+
+.toggle-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  transition: transform var(--transition-default);
+}
+
+.toggle-button.active .toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* 配置部分 */
+.config-section {
+  display: none;
+  padding: 0 16px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
+}
+
+.config-section.active {
+  display: block;
+}
+
+.config-panel {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--color-background-panel);
+  border-radius: var(--border-radius);
+}
+
+.panel-title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* 设置项样式 */
+.setting-item {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* 只读输入框样式 */
+input[type="text"][readonly],
+input[type="number"][readonly] {
+  background-color: var(--color-background);
+  cursor: default;
+}
+
+.setting-label {
+  flex: 0 0 100%;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.setting-input {
+  width: 100%;
+  height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+/* 内联数值输入框布局 */
+.setting-item-inline {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* 标签和输入框的容器 - 强制同行 */
+.setting-item-inline .setting-label,
+.setting-item-inline .setting-input {
+  flex-shrink: 0 !important;
+}
+
+.setting-item-inline .setting-label {
+  flex: 1 1 auto !important;
+  margin-bottom: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 140px) !important;
+}
+
+.setting-item-inline .setting-input {
+  flex: 0 0 120px !important;
+  width: 120px !important;
+  min-width: 120px !important;
+}
+
+/* 描述文本独立换行 */
+.setting-item-inline .setting-desc {
+  flex: 0 0 100% !important;
+  margin-top: 4px !important;
+  margin-left: 0 !important;
+}
+
+.setting-desc {
+  flex: 0 0 100%;
+  margin-top: 4px;
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+}
+
+/* 单选按钮组 */
+.radio-group {
+  flex-direction: column;
+}
+
+.radio-options {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.radio-options label {
+  display: flex;
+  align-items: center;
+}
+
+/* 表单控件样式 */
+input[type="checkbox"],
+input[type="radio"] {
+  margin-left: 2px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+/* 徽标样式 */
+.badge-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.badge-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.badge-option input[type="radio"] {
+  margin-right: 8px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  color: white;
+  font-size: var(--font-size-small);
+  font-weight: 500;
+  margin: 0 8px;
+  padding: 0 6px;
+}
+
+.badge-hidden {
+  background-color: var(--color-badge-hidden);
+}
+
+.badge-open {
+  background-color: var(--color-badge-open);
+}
+
+.badge-user {
+  background-color: var(--color-badge-user);
+}
+
+/* 隐藏标签列表 */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tabs-title {
+  padding: 12px 16px;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0; /* 防止被压缩 */
+}
+
+/* 移除这个CSS规则，由JavaScript动态控制 */
+/* #configSection.active ~ .tabs-container .tabs-title {
+  JavaScript会动态计算并设置这个值
+} */
+
+.tabs-list {
+  list-style: none;
+  flex: 1;
+  padding: 0;
+}
+
+.tabs-list li {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-background);
+  cursor: pointer;
+  transition: background-color var(--transition-default);
+}
+
+.tabs-list li:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.tabs-list li:last-child {
+  border-bottom: none;
+}
+
+.tab-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.favicon {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  margin-right: 12px;
+  border-radius: 2px;
+}
+
+.tab-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-actions {
+  display: none;
+  margin-left: 8px;
+}
+
+.tabs-list li:hover .tab-actions {
+  display: flex;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+  margin-bottom: 16px;
+}
+
+.empty-message {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-description {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  max-width: 300px;
+}
+
+/* 通知样式 */
+.notification-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  max-width: 300px;
+}
+
+.notification {
+  background-color: var(--color-background);
+  color: var(--color-primary);
+  border-left: 4px solid var(--color-primary);
+  padding: 12px 16px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 8px;
+  animation: slide-in 0.3s ease-out forwards, fade-out 0.3s ease-out 2.7s forwards;
+  font-size: var(--font-size-small);
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+
