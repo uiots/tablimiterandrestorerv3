@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tab Limit</title>
+    <title id="i18nTitle"></title>
     <link href="popup-styles.css" rel="stylesheet" />
     <link
       href="../assets/vendors/bulma.min.css"
@@ -14,7 +14,7 @@
   <body>
     <header class="header">
       <img class="header__icon" src="../assets/icons/icon-192.png" alt="Icon" />
-      <h1>Tab Limiter And Restorer V3</h1>
+      <h1 id="i18nHeaderTitle"></h1>
       <a
         class="bmc__button"
         href="https://buymeabtc.com/uiopts"
@@ -30,7 +30,7 @@
         <!-- 配置部分 -->
         <div class="config-toggle">
           <button id="toggleConfig" class="toggle-button">
-            <span>设置</span>
+            <span id="i18nSettingTitle"></span>
             <svg class="toggle-icon" viewBox="0 0 24 24">
               <path d="M7 10l5 5 5-5z"></path>
             </svg>
@@ -40,109 +40,109 @@
         <div id="configSection" class="config-section">
           <!-- 基本设置 -->
           <div class="config-panel">
-            <h3 class="panel-title">基本设置</h3>
+            <h3 class="panel-title" id="i18nBasicSetting"></h3>
 
             <label class="setting-item">
               <input id="inputActive" name="inputActive" type="checkbox" />
-              <span>启用标签限制</span>
+              <span id="i18nEnableLimit"></span>
             </label>
 
             <div class="setting-item setting-item-inline">
-              <div class="setting-label">标签数量限制</div>
+              <div class="setting-label" id="i18nTabLimit"></div>
               <input class="setting-input" id="inputTabsVisible" min="1" name="inputTabsVisible" type="number" />
             </div>
 
             <div class="setting-item setting-item-inline">
-              <div class="setting-label">隐藏标签队列长度</div>
+              <div class="setting-label" id="i18nQueueLength"></div>
               <input class="setting-input" id="inputTabsQueueLength" min="1" name="inputTabsQueueLength" type="number" />
             </div>
           </div>
 
           <!-- 标签页自动移动 -->
           <div class="config-panel">
-            <h3 class="panel-title">标签页自动移动</h3>
+            <h3 class="panel-title" id="i18nAutoMoveTitle"></h3>
 
             <label class="setting-item">
               <input id="inputAutoMoveEnabled" name="inputAutoMoveEnabled" type="checkbox" />
-              <span>启用标签页自动移动</span>
-              <small class="setting-desc">访问标签页后延迟一段时间自动移动到指定位置</small>
+              <span id="i18nEnableAutoMove"></span>
+              <small class="setting-desc" id="i18nAutoMoveDesc"></small>
             </label>
 
             <div class="setting-item">
-              <div class="setting-label">移动方向</div>
+              <div class="setting-label" id="i18nMoveDirection"></div>
               <div class="radio-options">
                 <label>
                   <input id="inputAutoMoveDirectionLeft" name="autoMoveDirection" type="radio" value="left" />
-                  <span>移动到开头</span>
+                  <span id="i18nMoveToStart"></span>
                 </label>
                 <label>
                   <input id="inputAutoMoveDirectionRight" name="autoMoveDirection" type="radio" value="right" />
-                  <span>移动到末尾</span>
+                  <span id="i18nMoveToEnd"></span>
                 </label>
               </div>
             </div>
 
             <div class="setting-item setting-item-inline">
-              <div class="setting-label">延迟时间（秒）</div>
+              <div class="setting-label" id="i18nDelaySec"></div>
               <input class="setting-input" id="inputAutoMoveDelay" min="1" max="60" name="inputAutoMoveDelay" type="number" />
             </div>
           </div>
 
           <!-- 自适应标签限制 -->
           <div class="config-panel">
-            <h3 class="panel-title">自适应标签限制</h3>
+            <h3 class="panel-title" id="i18nAdaptiveTitle"></h3>
             
             <label class="setting-item">
               <input id="inputAdaptiveLimit" name="inputAdaptiveLimit" type="checkbox" />
-              <span>根据窗口宽度自动调整标签限制</span>
-              <small class="setting-desc">启用后，系统会根据窗口宽度和每标签像素宽度自动计算最佳标签数量</small>
+              <span id="i18nEnableAdaptive"></span>
+              <small class="setting-desc" id="i18nAdaptiveDesc"></small>
             </label>
             
             <div class="setting-item setting-item-inline">
-              <div class="setting-label">每标签像素宽度</div>
+              <div class="setting-label" id="i18nPixelsPerTab"></div>
               <input class="setting-input" id="inputPixelsPerTab" min="100" max="500" name="inputPixelsPerTab" type="number" />
             </div>
 
             <!-- 自适应标签限制信息区域 -->
             <div class="setting-item setting-item-inline" id="adaptiveInfoContainer" style="display: none;">
-              <div class="setting-label">当前窗口宽度</div>
+              <div class="setting-label" id="i18nCurrentWinWidth"></div>
               <input class="setting-input" id="currentWindowWidth" type="text" readonly>
             </div>
 
             <div class="setting-item setting-item-inline" id="adaptiveInfoContainer2" style="display: none;">
-              <div class="setting-label">计算得到的标签数</div>
+              <div class="setting-label" id="i18nCalcTabLimit"></div>
               <input class="setting-input" id="calculatedTabLimit" type="text" readonly>
             </div>
 
             <div class="setting-item setting-item-inline" id="adaptiveInfoContainer3" style="display: none;">
-              <div class="setting-label">实际标签限制</div>
+              <div class="setting-label" id="i18nEffectiveTabLimit"></div>
               <input class="setting-input" id="effectiveTabLimit" type="text" readonly>
-              <small class="setting-desc">（取计算值和固定限制中的较小值）</small>
+              <small class="setting-desc" id="i18nEffectiveDesc"></small>
             </div>
           </div>
           
 
           <!-- 徽标设置 -->
           <div class="config-panel">
-            <h3 class="panel-title">徽标显示模式</h3>
+            <h3 class="panel-title" id="i18nBadgeTitle"></h3>
 
             <div class="badge-options">
               <label class="badge-option">
                 <input id="badgeModeHidden" name="badgeMode" type="radio" value="hidden" />
                 <span class="badge badge-hidden" id="badgePreviewHidden">0</span>
-                <span>隐藏标签数量</span>
+                <span id="i18nBadgeHidden"></span>
               </label>
 
               <label class="badge-option">
                 <input id="badgeModeOpen" name="badgeMode" type="radio" value="open" />
                 <span class="badge badge-open" id="badgePreviewOpen">0</span>
-                <span>打开标签数量</span>
+                <span id="i18nBadgeOpen"></span>
               </label>
 
               <label class="badge-option">
                 <input id="badgeModeUser" name="badgeMode" type="radio" value="user" />
                 <span class="badge badge-user" id="badgePreviewUser">0</span>
-                <span>用户标签总数</span>
+                <span id="i18nBadgeUser"></span>
               </label>
             </div>
           </div>
@@ -150,12 +150,12 @@
         
         <!-- 隐藏标签列表 -->
         <div class="tabs-container">
-          <h3 class="tabs-title">隐藏的标签</h3>
+          <h3 class="tabs-title" id="i18nHiddenTabsTitle"></h3>
           
           <div id="emptyTabsContainer" class="empty-state">
             <img src="../assets/icons/icon-48.png" alt="空列表" class="empty-icon">
-            <p id="msgNoHiddenTabs" class="empty-message">暂无隐藏标签</p>
-            <p class="empty-description">当标签数量超过限制时，系统会隐藏最长时间未访问的标签</p>
+            <p id="msgNoHiddenTabs" class="empty-message"></p>
+            <p class="empty-description" id="i18nEmptyDesc"></p>
           </div>
           
           <ul id="listHiddenTabs" class="tabs-list"></ul>
@@ -165,5 +165,6 @@
       </main>
     </div>
     <script src="popup.js" type="module"></script>
+    <script src="popup-i18n.js" type="module"></script>
   </body>
 </html>

@@ -18,7 +18,7 @@
    "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'"
    },
-   "description": "Limit the number of tabs opened in a browser window. Close them when you reach the limit and restore them when there is a space.",
+   "description": "__MSG_extDesc__",
    "icons": {
       "128": "src/assets/icons/icon-128.png",
       "16": "src/assets/icons/icon-16.png",
@@ -29,11 +29,12 @@
       "48": "src/assets/icons/icon-48.png"
    },
    "manifest_version": 3,
-   "name": "Tab Limiter And Restorer V3",
+   "name": "__MSG_extName__",
+   "default_locale": "en",
    "permissions": [
       "storage",
       "tabs",
       "windows"
    ],
-   "version": "2.0.0"
+   "version": "2.0.1"
 }

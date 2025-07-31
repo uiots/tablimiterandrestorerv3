@@ -229,15 +229,15 @@ function setupEventListeners() {
   chrome.storage.onChanged.addListener(async (changes, areaName) => {
     // 如果配置发生变化
     if ((areaName === 'sync' && changes.config) || 
-        (areaName === 'local' && (changes.hiddenTabs || changes.activeTabHistory))) {
-      // 如果是config变化，需要更新TabManager的本地config
+        (areaName === 'local' && changes.hiddenTabs)) {
+      
+      // 更新TabManager的本地数据
       if (areaName === 'sync' && changes.config) {
         TabManager.config = changes.config.newValue;
       }
       
-      // 如果是hiddenTabs变化，需要更新TabManager的本地hiddenTabs
       if (areaName === 'local' && changes.hiddenTabs) {
-        TabManager.hiddenTabs = changes.hiddenTabs.newValue;
+        TabManager.hiddenTabs = Array.isArray(changes.hiddenTabs.newValue) ? changes.hiddenTabs.newValue : [];
       }
       
       // 更新popup内容
