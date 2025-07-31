@@ -75,7 +75,7 @@ body {
   border-radius: 4px;
 }
 
-.bmc__button {
+.github__button {
   margin-left: auto;
   display: flex;
   align-items: center;
@@ -84,11 +84,17 @@ body {
   height: 32px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.2);
+  transition: background-color 0.2s ease;
 }
 
-.bmc__icon {
+.github__button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.github__icon {
   width: 20px;
   height: 20px;
+  color: #ffffff;
 }
 
 /* 主体内容结构 */
