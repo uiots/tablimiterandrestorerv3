@@ -1,0 +1,8 @@
+{
+  "name": "tab-limiter-and-restorer-v3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

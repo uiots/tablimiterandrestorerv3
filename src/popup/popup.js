@@ -1,480 +1,315 @@
-// popup.js - 简化的弹出窗口脚本
-import { TabManager } from '../background/background.js';
+// Popup UI. Imports shared helpers only — never the service-worker entry.
+import {
+  effectiveLimit,
+  isRestorableUrl,
+  loadConfig,
+  loadHiddenTabs,
+  mergeConfig,
+  saveConfig as persistConfig,
+  saveHiddenTabs,
+  trimQueue,
+  updateBadgeCount,
+  withoutHiddenId
+} from '../shared/tab-state.js';
 
-// 初始化
+const chrome = globalThis.chrome;
+let config = mergeConfig(null);
+
 async function initPopup() {
-  console.log('Initializing popup...');
-
   try {
-    // 初始化TabManager
-    await TabManager.init();
-
-    // 渲染设置
+    config = await loadConfig(chrome);
     renderSettings();
-
-    // 设置配置部分默认折叠
     setupConfigToggle();
-
-    // 添加事件监听器
     setupEventListeners();
-
-    // 更新popup内容
     await updatePopupContent();
-
-    console.log('Popup initialized');
   } catch (error) {
-    console.error('Error initializing popup:', error);
+    console.error('[tab-limiter] popup init', error);
   }
 }
 
-// 统一更新popup内容
 async function updatePopupContent() {
   try {
-    // 渲染隐藏的标签列表
-    renderHiddenTabs();
-    
-    // 更新徽标预览
+    await renderHiddenTabs();
     await updateBadgePreview();
-    
-    // 切换自适应标签限制信息显示状态
     toggleAdaptiveInfo();
-    
-    // 如果自适应标签限制已启用，更新信息
-    if (TabManager.config.adaptiveLimit) {
-      await updateAdaptiveInfo();
-    }
+    if (config.adaptiveLimit) await updateAdaptiveInfo();
   } catch (error) {
-    // 静默处理错误
+    console.error('[tab-limiter] popup update', error);
   }
 }
 
-// 设置配置折叠功能
 function setupConfigToggle() {
   const toggleButton = document.getElementById('toggleConfig');
   const configSection = document.getElementById('configSection');
-
-  // 默认折叠
   configSection.classList.remove('active');
   toggleButton.classList.remove('active');
-
-  // 添加点击事件
-  toggleButton.addEventListener('click', async () => {
+  toggleButton.addEventListener('click', () => {
     configSection.classList.toggle('active');
     toggleButton.classList.toggle('active');
   });
 }
 
-
-
-// 渲染设置
 function renderSettings() {
-  // 设置复选框
-  document.getElementById('inputActive').checked = TabManager.config.active;
-  
-  // 设置数值输入框
-  document.getElementById('inputTabsVisible').value = TabManager.config.tabLimit;
-  
-  // 如果存在其他输入框，也设置它们
-  if (document.getElementById('inputTabsQueueLength')) {
-    document.getElementById('inputTabsQueueLength').value = 
-      TabManager.config.tabsQueueLength || 80; // 保持兼容
-  }
-  
-  // 自适应标签限制设置
-  if (document.getElementById('inputPixelsPerTab')) {
-    document.getElementById('inputPixelsPerTab').value = 
-      TabManager.config.pixelsPerTab || 200;
-  }
-  
-  if (document.getElementById('inputAdaptiveLimit')) {
-    document.getElementById('inputAdaptiveLimit').checked = 
-      TabManager.config.adaptiveLimit || false;
-  }
-  
-  // 设置徽标模式单选按钮
-  if (document.getElementById('badgeModeHidden')) {
-    document.getElementById('badgeModeHidden').checked = 
-      TabManager.config.badgeMode === 'hidden';
-  }
-  
-  if (document.getElementById('badgeModeOpen')) {
-    document.getElementById('badgeModeOpen').checked = 
-      TabManager.config.badgeMode === 'open';
-  }
-  
-  if (document.getElementById('badgeModeUser')) {
-    document.getElementById('badgeModeUser').checked =
-      TabManager.config.badgeMode === 'user';
-  }
+  document.getElementById('inputActive').checked = config.active;
+  document.getElementById('inputTabsVisible').value = config.tabLimit;
 
-  // 标签页自动移动设置
-  if (document.getElementById('inputAutoMoveEnabled')) {
-    document.getElementById('inputAutoMoveEnabled').checked =
-      TabManager.config.autoMove?.enabled || false;
-  }
+  const queueInput = document.getElementById('inputTabsQueueLength');
+  if (queueInput) queueInput.value = config.tabsQueueLength;
 
-  if (document.getElementById('inputAutoMoveDirectionLeft')) {
-    document.getElementById('inputAutoMoveDirectionLeft').checked =
-      (TabManager.config.autoMove?.direction || 'right') === 'left';
-  }
+  const pixelsInput = document.getElementById('inputPixelsPerTab');
+  if (pixelsInput) pixelsInput.value = config.pixelsPerTab;
 
-  if (document.getElementById('inputAutoMoveDirectionRight')) {
-    document.getElementById('inputAutoMoveDirectionRight').checked =
-      (TabManager.config.autoMove?.direction || 'right') === 'right';
-  }
+  const adaptiveInput = document.getElementById('inputAdaptiveLimit');
+  if (adaptiveInput) adaptiveInput.checked = config.adaptiveLimit;
 
-  if (document.getElementById('inputAutoMoveDelay')) {
-    document.getElementById('inputAutoMoveDelay').value =
-      Math.round((TabManager.config.autoMove?.delay || 3000) / 1000);
-  }
+  const hiddenMode = document.getElementById('badgeModeHidden');
+  if (hiddenMode) hiddenMode.checked = config.badgeMode === 'hidden';
+  const openMode = document.getElementById('badgeModeOpen');
+  if (openMode) openMode.checked = config.badgeMode === 'open';
+  const userMode = document.getElementById('badgeModeUser');
+  if (userMode) userMode.checked = config.badgeMode === 'user';
+
+  const autoMove = config.autoMove;
+  const autoEnabled = document.getElementById('inputAutoMoveEnabled');
+  if (autoEnabled) autoEnabled.checked = autoMove.enabled;
+  const moveLeft = document.getElementById('inputAutoMoveDirectionLeft');
+  if (moveLeft) moveLeft.checked = autoMove.direction === 'left';
+  const moveRight = document.getElementById('inputAutoMoveDirectionRight');
+  if (moveRight) moveRight.checked = autoMove.direction === 'right';
+  const delayInput = document.getElementById('inputAutoMoveDelay');
+  if (delayInput) delayInput.value = Math.round(autoMove.delay / 1000);
 }
 
-// 更新徽标预览
 async function updateBadgePreview() {
-  try {
-    // 获取当前窗口的标签
-    const tabs = await chrome.tabs.query({});
-    
-    // 获取隐藏标签
-    const hiddenTabs = TabManager.getHiddenTabs();
-    
-    // 计算用户标签数量（排除历史标签）
-    const hiddenUserTabs = hiddenTabs.filter(tab => !tab.fromHistory);
-    
-    // 更新预览
-    document.getElementById('badgePreviewHidden').textContent = hiddenTabs.length;
-    document.getElementById('badgePreviewOpen').textContent = tabs.length;
-    document.getElementById('badgePreviewUser').textContent = tabs.length + hiddenUserTabs.length;
-    
-  } catch (error) {
-    // 静默处理错误
-  }
+  const tabs = await chrome.tabs.query({});
+  const hiddenTabs = await loadHiddenTabs(chrome);
+  const hiddenUserTabs = hiddenTabs.filter(tab => !tab.fromHistory);
+  document.getElementById('badgePreviewHidden').textContent = hiddenTabs.length;
+  document.getElementById('badgePreviewOpen').textContent = tabs.length;
+  document.getElementById('badgePreviewUser').textContent = tabs.length + hiddenUserTabs.length;
 }
 
-// 渲染隐藏的标签列表
 async function renderHiddenTabs() {
   const listElement = document.getElementById('listHiddenTabs');
   const emptyContainer = document.getElementById('emptyTabsContainer');
-  
-  // 清空列表
+  const hiddenTabs = await loadHiddenTabs(chrome);
   listElement.innerHTML = '';
-  
-  // 获取隐藏标签
-  const hiddenTabs = TabManager.getHiddenTabs();
-  
-  if (!hiddenTabs || hiddenTabs.length === 0) {
-    // 显示空状态
+  if (hiddenTabs.length === 0) {
     emptyContainer.style.display = 'flex';
     listElement.style.display = 'none';
     return;
   }
-  
-  // 显示列表
+
   emptyContainer.style.display = 'none';
   listElement.style.display = 'block';
-  
-  // 逆序显示（最新的在上面）
+
   hiddenTabs.slice().reverse().forEach(tab => {
     const li = document.createElement('li');
-    
-    // 创建标签信息区域
     const tabInfo = document.createElement('div');
     tabInfo.className = 'tab-info';
-    
-    // 添加favicon
+
     const favicon = document.createElement('img');
-    if (tab.favIconUrl) {
-      favicon.src = tab.favIconUrl;
-    }
+    if (tab.favIconUrl) favicon.src = tab.favIconUrl;
     favicon.alt = 'Favicon';
     favicon.className = 'favicon';
     tabInfo.appendChild(favicon);
-    
-    // 添加标题
+
     const title = document.createElement('div');
     title.className = 'tab-title';
     title.textContent = tab.title || tab.url;
     tabInfo.appendChild(title);
-    
-    // 创建操作区域
+
     const actions = document.createElement('div');
     actions.className = 'tab-actions';
-    
-    // 添加删除按钮
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'delete is-small';
     deleteBtn.setAttribute('data-action', 'delete');
     actions.appendChild(deleteBtn);
-    
-    // 组装元素
+
     li.appendChild(tabInfo);
     li.appendChild(actions);
-    
-    // 设置数据属性
     li.dataset.id = tab.id;
-    li.dataset.url = tab.url;
-    li.title = tab.title || tab.url;
-    
-    // 添加到列表
+    li.dataset.url = tab.url || '';
+    li.dataset.windowId = tab.windowId == null ? '' : String(tab.windowId);
+    li.dataset.restorable = isRestorableUrl(tab.url) ? '1' : '0';
+    li.title = tab.title || tab.url || '';
     listElement.appendChild(li);
   });
-  
-  // 更新徽标预览
-  updateBadgePreview();
 }
 
-// 设置事件监听器
+async function persistAndBadge() {
+  config = await persistConfig(chrome, config);
+  await updateBadgeCount(chrome, config);
+}
+
 function setupEventListeners() {
-  // 监听存储变化，更新界面
   chrome.storage.onChanged.addListener(async (changes, areaName) => {
-    // 如果配置发生变化
-    if ((areaName === 'sync' && changes.config) || 
-        (areaName === 'local' && changes.hiddenTabs)) {
-      
-      // 更新TabManager的本地数据
-      if (areaName === 'sync' && changes.config) {
-        TabManager.config = changes.config.newValue;
-      }
-      
-      if (areaName === 'local' && changes.hiddenTabs) {
-        TabManager.hiddenTabs = Array.isArray(changes.hiddenTabs.newValue) ? changes.hiddenTabs.newValue : [];
-      }
-      
-      // 更新popup内容
+    if (areaName === 'sync' && changes.config) {
+      config = mergeConfig(changes.config.newValue);
+    }
+    if ((areaName === 'sync' && changes.config) || (areaName === 'local' && changes.hiddenTabs)) {
       await updatePopupContent();
     }
   });
 
-
-
-  // 活动状态复选框
   document.getElementById('inputActive').addEventListener('change', async evt => {
-    TabManager.config.active = evt.target.checked;
-    await TabManager.saveConfig();
-    // 不需要手动更新，storage.onChanged事件会处理
+    config.active = evt.target.checked;
+    await persistAndBadge();
   });
-  
-  // 自适应标签限制开关
+
   document.getElementById('inputAdaptiveLimit').addEventListener('change', async evt => {
-    TabManager.config.adaptiveLimit = evt.target.checked;
-    await TabManager.saveConfig();
-    // 不需要手动更新，storage.onChanged事件会处理
+    config.adaptiveLimit = evt.target.checked;
+    await persistAndBadge();
   });
-  
-  // 每标签像素宽度输入框
+
   document.getElementById('inputPixelsPerTab').addEventListener('change', async evt => {
-    const newValue = Math.max(100, Math.min(500, parseInt(evt.target.value) || 200));
-    TabManager.config.pixelsPerTab = newValue;
-    await TabManager.saveConfig();
-    // 不需要手动更新，storage.onChanged事件会处理
+    config.pixelsPerTab = Math.max(100, Math.min(500, parseInt(evt.target.value, 10) || config.pixelsPerTab));
+    evt.target.value = config.pixelsPerTab;
+    await persistAndBadge();
   });
-  
-  // 标签限制输入框
+
   document.getElementById('inputTabsVisible').addEventListener('change', async evt => {
-    const newValue = Math.max(1, parseInt(evt.target.value) || 20);
-    TabManager.config.tabLimit = newValue;
-    await TabManager.saveConfig();
-    evt.target.value = newValue;
-    // 不需要手动更新，storage.onChanged事件会处理
+    config.tabLimit = Math.max(1, parseInt(evt.target.value, 10) || config.tabLimit);
+    evt.target.value = config.tabLimit;
+    await persistAndBadge();
   });
-  
-  // 隐藏标签队列长度
-  if (document.getElementById('inputTabsQueueLength')) {
-    document.getElementById('inputTabsQueueLength').addEventListener('change', async evt => {
-      const newValue = Math.max(1, parseInt(evt.target.value) || 80);
-      TabManager.config.tabsQueueLength = newValue;
-      await TabManager.saveConfig();
-      evt.target.value = newValue;
-      
-      // 调整隐藏标签列表以符合新的长度限制
-      const hiddenTabs = TabManager.getHiddenTabs();
-      if (hiddenTabs && hiddenTabs.length > newValue) {
-        // 如果当前隐藏标签数量超过新的限制，则移除多余的标签（从最旧的开始）
-        TabManager.hiddenTabs = hiddenTabs.slice(hiddenTabs.length - newValue);
-        await TabManager.saveHiddenTabs();
+
+  const queueInput = document.getElementById('inputTabsQueueLength');
+  if (queueInput) {
+    queueInput.addEventListener('change', async evt => {
+      config.tabsQueueLength = Math.max(1, parseInt(evt.target.value, 10) || config.tabsQueueLength);
+      evt.target.value = config.tabsQueueLength;
+      await persistAndBadge();
+      const hiddenTabs = await loadHiddenTabs(chrome);
+      if (hiddenTabs.length > config.tabsQueueLength) {
+        await saveHiddenTabs(chrome, trimQueue(hiddenTabs, config.tabsQueueLength));
       }
-      
-      // 更新徽章和重新渲染隐藏标签列表
-      TabManager.updateBadgeCount();
-      renderHiddenTabs();
-      updateBadgePreview();
+      await renderHiddenTabs();
+      await updateBadgePreview();
     });
   }
-  
-  // 隐藏标签列表点击
+
   document.getElementById('listHiddenTabs').addEventListener('click', async evt => {
     const li = evt.target.closest('li');
     if (!li) return;
-    
-    const tabId = li.dataset.id;
-    const url = li.dataset.url;
-    const isDeleteButton = evt.target.classList.contains('delete');
-    
-    if (isDeleteButton) {
-      // 删除隐藏标签
-      if (TabManager.removeHiddenTab(tabId)) {
-        await TabManager.saveHiddenTabs();
-        TabManager.updateBadgeCount();
-        li.remove();
-        
-        // 如果没有更多标签，显示空状态
-        if (TabManager.getHiddenTabs().length === 0) {
-          document.getElementById('emptyTabsContainer').style.display = 'flex';
-          document.getElementById('listHiddenTabs').style.display = 'none';
-        }
-        
-        // 更新徽标预览
-        updateBadgePreview();
-      }
-    } else {
-      // 恢复标签（点击其他区域）
-      if (TabManager.removeHiddenTab(tabId)) {
-        await TabManager.saveHiddenTabs();
-        
+
+    const isDelete = evt.target.classList.contains('delete');
+    if (!isDelete && li.dataset.restorable !== '1') return;
+
+    const { kept, removed } = withoutHiddenId(await loadHiddenTabs(chrome), li.dataset.id);
+    if (!removed) return;
+
+    // Drop the queue entry before creating the tab so the service worker
+    // does not restore the same URL a second time.
+    await saveHiddenTabs(chrome, kept);
+
+    if (!isDelete) {
+      const windowId = await resolveRestoreWindow(li.dataset.windowId);
+      try {
         await chrome.tabs.create({
+          url: li.dataset.url,
           active: !(evt.ctrlKey || evt.metaKey),
-          url: url
+          windowId
         });
-        
-        TabManager.updateBadgeCount();
-        li.remove();
-        
-        // 如果没有更多标签，显示空状态
-        if (TabManager.getHiddenTabs().length === 0) {
-          document.getElementById('emptyTabsContainer').style.display = 'flex';
-          document.getElementById('listHiddenTabs').style.display = 'none';
-        }
-        
-        // 更新徽标预览
-        updateBadgePreview();
+      } catch (error) {
+        console.error('[tab-limiter] manual restore failed', error);
+        const current = await loadHiddenTabs(chrome);
+        await saveHiddenTabs(chrome, trimQueue(current.concat(removed), config.tabsQueueLength));
+        return;
       }
     }
+
+    await updateBadgeCount(chrome, config);
+    await updatePopupContent();
   });
-  
-  // 徽标模式选择
+
   document.getElementById('badgeModeHidden').addEventListener('change', async evt => {
-    if (evt.target.checked) {
-      TabManager.config.badgeMode = 'hidden';
-      await TabManager.saveConfig();
-      
-      // 更新徽章
-      TabManager.updateBadgeCount();
-    }
+    if (!evt.target.checked) return;
+    config.badgeMode = 'hidden';
+    await persistAndBadge();
   });
-  
+
   document.getElementById('badgeModeOpen').addEventListener('change', async evt => {
-    if (evt.target.checked) {
-      TabManager.config.badgeMode = 'open';
-      await TabManager.saveConfig();
-      
-      // 更新徽章
-      TabManager.updateBadgeCount();
-    }
+    if (!evt.target.checked) return;
+    config.badgeMode = 'open';
+    await persistAndBadge();
   });
-  
+
   document.getElementById('badgeModeUser').addEventListener('change', async evt => {
-    if (evt.target.checked) {
-      TabManager.config.badgeMode = 'user';
-      await TabManager.saveConfig();
-
-      // 更新徽章
-      TabManager.updateBadgeCount();
-    }
+    if (!evt.target.checked) return;
+    config.badgeMode = 'user';
+    await persistAndBadge();
   });
 
-  // 标签页自动移动事件监听器
   document.getElementById('inputAutoMoveEnabled').addEventListener('change', async evt => {
-    if (!TabManager.config.autoMove) {
-      TabManager.config.autoMove = { enabled: true, direction: 'left', delay: 3000 };
-    }
-    TabManager.config.autoMove.enabled = evt.target.checked;
-    await TabManager.saveConfig();
+    config.autoMove.enabled = evt.target.checked;
+    await persistAndBadge();
   });
 
   document.getElementById('inputAutoMoveDirectionLeft').addEventListener('change', async evt => {
-    if (evt.target.checked) {
-      if (!TabManager.config.autoMove) {
-        TabManager.config.autoMove = { enabled: true, direction: 'left', delay: 3000 };
-      }
-      TabManager.config.autoMove.direction = 'left';
-      await TabManager.saveConfig();
-    }
+    if (!evt.target.checked) return;
+    config.autoMove.direction = 'left';
+    await persistAndBadge();
   });
 
   document.getElementById('inputAutoMoveDirectionRight').addEventListener('change', async evt => {
-    if (evt.target.checked) {
-      if (!TabManager.config.autoMove) {
-        TabManager.config.autoMove = { enabled: true, direction: 'left', delay: 3000 };
-      }
-      TabManager.config.autoMove.direction = 'right';
-      await TabManager.saveConfig();
-    }
+    if (!evt.target.checked) return;
+    config.autoMove.direction = 'right';
+    await persistAndBadge();
   });
 
   document.getElementById('inputAutoMoveDelay').addEventListener('change', async evt => {
-    const newValue = Math.max(1, Math.min(60, parseInt(evt.target.value) || 3));
-    if (!TabManager.config.autoMove) {
-      TabManager.config.autoMove = { enabled: true, direction: 'left', delay: 3000 };
-    }
-    TabManager.config.autoMove.delay = newValue * 1000; // 转换为毫秒
-    await TabManager.saveConfig();
-    evt.target.value = newValue;
+    const seconds = Math.max(1, Math.min(60, parseInt(evt.target.value, 10) || 3));
+    config.autoMove.delay = seconds * 1000;
+    evt.target.value = seconds;
+    await persistAndBadge();
   });
 }
 
-// 切换自适应标签限制信息显示
-function toggleAdaptiveInfo() {
-  const adaptiveInfoContainer = document.getElementById('adaptiveInfoContainer');
-  const adaptiveInfoContainer2 = document.getElementById('adaptiveInfoContainer2');
-  const adaptiveInfoContainer3 = document.getElementById('adaptiveInfoContainer3');
-  
-  if (adaptiveInfoContainer && adaptiveInfoContainer2 && adaptiveInfoContainer3) {
-    const display = TabManager.config.adaptiveLimit ? 'block' : 'none';
-    adaptiveInfoContainer.style.display = display;
-    adaptiveInfoContainer2.style.display = display;
-    adaptiveInfoContainer3.style.display = display;
-  }
-}
-
-// 更新自适应标签限制信息
-async function updateAdaptiveInfo() {
-  try {
-    // 获取当前窗口
-    const windows = await chrome.windows.getAll({windowTypes: ['normal']});
-    
-    // 使用当前窗口或第一个窗口
-    let currentWindow = windows[0];
-    for (const window of windows) {
-      if (window.focused) {
-        currentWindow = window;
-        break;
-      }
+async function resolveRestoreWindow(preferredId) {
+  const preferred = Number(preferredId);
+  if (Number.isInteger(preferred) && preferred > 0) {
+    try {
+      const win = await chrome.windows.get(preferred);
+      if (win && (!win.type || win.type === 'normal')) return win.id;
+    } catch {
+      // Source window is gone; fall through to the current one.
     }
-    
-    if (!currentWindow) return;
-    
-    // 获取窗口宽度
-    const windowWidth = currentWindow.width;
-    
-    // 计算标签数量
-    const pixelsPerTab = TabManager.config.pixelsPerTab;
-    const calculatedLimit = Math.max(5, Math.floor(windowWidth / pixelsPerTab));
-    
-    // 获取实际标签限制（计算值和固定值的最小值）
-    const effectiveLimit = Math.min(calculatedLimit, TabManager.config.tabLimit);
-    
-    // 更新UI
-    document.getElementById('currentWindowWidth').value = `${windowWidth}px`;
-    document.getElementById('calculatedTabLimit').value = `${calculatedLimit}`;
-    document.getElementById('effectiveTabLimit').value = `${effectiveLimit}`;
-  } catch (error) {
-    // 静默处理错误
   }
+  const current = await chrome.windows.getCurrent();
+  return current && current.id;
 }
 
+function toggleAdaptiveInfo() {
+  const containers = [
+    document.getElementById('adaptiveInfoContainer'),
+    document.getElementById('adaptiveInfoContainer2'),
+    document.getElementById('adaptiveInfoContainer3')
+  ];
+  if (containers.some(node => !node)) return;
+  const display = config.adaptiveLimit ? 'block' : 'none';
+  for (const node of containers) node.style.display = display;
+}
 
+async function updateAdaptiveInfo() {
+  const windows = await chrome.windows.getAll({ windowTypes: ['normal'] });
+  let currentWindow = windows[0];
+  for (const win of windows) {
+    if (win.focused) {
+      currentWindow = win;
+      break;
+    }
+  }
+  if (!currentWindow) return;
 
+  const pixels = config.pixelsPerTab;
+  const calculatedLimit = Math.max(5, Math.floor(currentWindow.width / pixels));
+  const limit = effectiveLimit(config, currentWindow);
+  document.getElementById('currentWindowWidth').value = `${currentWindow.width}px`;
+  document.getElementById('calculatedTabLimit').value = `${calculatedLimit}`;
+  document.getElementById('effectiveTabLimit').value = `${limit}`;
+}
 
-
-// 当DOM加载完成时初始化
-document.addEventListener('DOMContentLoaded', initPopup);
+document.addEventListener('DOMContentLoaded', () => {
+  initPopup();
+});
