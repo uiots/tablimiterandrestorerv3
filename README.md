@@ -28,11 +28,11 @@ This project is a fork and refactored V3 version of the original Tab Limiter And
 
 ## 重要说明 | Important Notes
 
-- **本版本已取消多窗口支持**，所有标签管理仅针对当前窗口。
+- **每个普通窗口单独计算上限**，不会把所有窗口的标签加在一起。关闭某个窗口后，它队列里的标签会交给其他仍有空位的窗口。
 - **近期进行了重大重构**，包括数据格式和存储结构的变更，升级后如遇兼容性问题（如旧版数据无法恢复），建议直接重载插件。
 - **不再保证与旧版数据格式兼容**，如遇问题可反馈。
 
-- **Multi-window support has been removed**; all tab management is for the current window only.
+- **Each normal window has its own limit.** Tabs are not added up across windows. After a window closes, its queued tabs are offered to other windows that still have room.
 - **Major refactoring**: Data format and storage structure have changed. If you encounter compatibility issues after upgrading (e.g., old data cannot be restored), please reload the extension.
 - **No guarantee of backward compatibility with old data formats**. Please report any issues.
 
@@ -60,6 +60,26 @@ This project is a fork and refactored V3 version of the original Tab Limiter And
 - English is the default; if your browser language is Chinese, the UI will switch automatically.
 - All UI text is dynamically filled using the Chrome extension i18n mechanism.
 
+## 近期主要更新（2.0.2）| Recent Updates (2.0.2)
+
+- 修复服务工作线程在空闲被回收后隐藏/恢复失效的问题。标签、窗口和存储监听在每次 worker 启动时注册，不再只挂在 `onInstalled` 上。
+- 隐藏队列和标签访问时间直接读写 `chrome.storage.local`，worker 重启后队列仍在。
+- 限制、隐藏和恢复按单个普通窗口计算；恢复时在原窗口（或有空位的窗口）创建标签。
+- 关闭窗口后，该窗口的隐藏标签变为“无主”，并立即尝试恢复到其他仍有空位的窗口；若都已满则保留在队列中，等之后有空位再恢复，不会永久卡在已关闭的窗口上。
+- 自动移动改用 `chrome.alarms`（短延迟仍用进程内定时器），清单增加 `alarms` 权限。
+- 弹窗不再引用后台入口脚本，配置合并补齐 `autoMove` 等嵌套字段。
+- 自动恢复会跳过无法用 `tabs.create` 打开的地址（如 `chrome://`、空地址）。
+- 版本号升级为 2.0.2。
+
+- Hide/restore keeps working after the service worker is idle-killed. Tab, window, and storage listeners register on every worker start, not only from `onInstalled`.
+- The hidden queue and tab access times are read and written through `chrome.storage.local`, so a worker restart does not drop them.
+- Limit, hide, and restore are decided per normal window, and restored tabs are created in that window (or another window that has room).
+- Closing a window orphans its queued tabs and immediately offers them to other windows that are under the limit. If every window is full, they stay queued until some window later has room, instead of remaining pinned to a closed window.
+- Auto-move is backed by `chrome.alarms` (a short in-process timer still covers sub-alarm delays). The manifest now requests the `alarms` permission.
+- The popup no longer imports the service-worker entry. Stored config is merged with defaults so nested fields such as `autoMove` are never missing.
+- Automatic restore skips URLs `tabs.create` cannot open (`chrome://`, empty, and similar).
+- Version updated to 2.0.2.
+
 ## 近期主要更新（2.0.1）| Recent Updates (2.0.1)
 
 - fork 并重构为 V3 版本，全面升级架构。
@@ -85,7 +105,10 @@ This project is a fork and refactored V3 version of the original Tab Limiter And
 │   ├── en/messages.json
 │   └── zh_CN/messages.json
 ├── src/
-│   ├── background/background.js   # 后台主逻辑 / Background logic
+│   ├── shared/tab-state.js        # 弹窗与后台共用的纯逻辑 / Shared helpers
+│   ├── background/
+│   │   ├── background.js          # 服务工作线程入口 / Service worker entry
+│   │   └── controller.js          # 隐藏与恢复 / Hide and restore
 │   └── popup/
 │       ├── popup.html             # 弹窗页面 / Popup page
 │       ├── popup.js               # 弹窗主逻辑 / Popup logic

@@ -32,9 +32,10 @@
    "name": "__MSG_extName__",
    "default_locale": "en",
    "permissions": [
+      "alarms",
       "storage",
       "tabs",
       "windows"
    ],
-   "version": "2.0.1"
+   "version": "2.0.2"
 }
